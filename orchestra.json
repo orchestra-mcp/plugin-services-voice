@@ -1,0 +1,23 @@
+{
+    "name": "orchestra-mcp/plugin-services-voice",
+    "description": "services-voice tools plugin for Orchestra MCP.",
+    "type": "tools",
+    "license": "MIT",
+    "homepage": "https://orchestra-mcp.dev",
+    "support": {
+        "issues": "https://github.com/orchestra-mcp/plugin-services-voice/issues",
+        "source": "https://github.com/orchestra-mcp/plugin-services-voice"
+    },
+    "require": {
+        "orchestra-mcp/gen-go": "^0.1.0",
+        "orchestra-mcp/sdk-go": "^0.1.0"
+    },
+    "bin": "services-voice",
+    "extra": {
+        "plugin-id": "tools.services-voice",
+        "provides": ["tools"],
+        "branch-alias": {
+            "dev-master": "0.1.x-dev"
+        }
+    }
+}
