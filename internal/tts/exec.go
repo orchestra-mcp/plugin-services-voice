@@ -5,25 +5,47 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
 // Speak invokes the platform TTS engine to speak the given text.
 // On macOS it uses the built-in `say` command; on all other platforms it uses
-// `espeak`. An optional voice name may be supplied.
-func Speak(ctx context.Context, text, voice string) (string, error) {
+// `espeak`. Optional voice, speed (words per minute), and volume (0.0-1.0) may be supplied.
+// Note: macOS `say` does not support volume control natively — only speed via -r flag.
+func Speak(ctx context.Context, text, voice, speed, volume string) (string, error) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		args := []string{"say"}
+		args := []string{}
 		if voice != "" {
 			args = append(args, "-v", voice)
 		}
+		if speed != "" {
+			args = append(args, "-r", speed)
+		}
 		args = append(args, text)
-		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
+		cmd = exec.CommandContext(ctx, "say", args...)
 	default:
-		args := []string{"espeak", text}
-		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
+		args := []string{}
+		if speed != "" {
+			args = append(args, "-s", speed)
+		}
+		if volume != "" {
+			if vol, err := strconv.ParseFloat(volume, 64); err == nil {
+				// espeak amplitude is 0-200, map 0.0-1.0 to 0-200
+				amp := int(vol * 200)
+				if amp < 0 {
+					amp = 0
+				}
+				if amp > 200 {
+					amp = 200
+				}
+				args = append(args, "-a", strconv.Itoa(amp))
+			}
+		}
+		args = append(args, text)
+		cmd = exec.CommandContext(ctx, "espeak", args...)
 	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {

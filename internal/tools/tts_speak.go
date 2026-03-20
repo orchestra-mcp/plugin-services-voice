@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	pluginv1 "github.com/orchestra-mcp/gen-go/orchestra/plugin/v1"
+	"github.com/orchestra-mcp/sdk-go/globaldb"
 	"github.com/orchestra-mcp/sdk-go/helpers"
 	"github.com/orchestra-mcp/plugin-services-voice/internal/tts"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -21,7 +22,15 @@ func TtsSpeakSchema() *structpb.Struct {
 			},
 			"voice": map[string]any{
 				"type":        "string",
-				"description": "Optional voice name (e.g. 'Samantha' on macOS)",
+				"description": "Optional voice name (e.g. 'Samantha' on macOS). Falls back to notify.voice_name config.",
+			},
+			"speed": map[string]any{
+				"type":        "string",
+				"description": "Optional speed in words per minute (e.g. '180'). Falls back to notify.voice_speed config.",
+			},
+			"volume": map[string]any{
+				"type":        "string",
+				"description": "Optional volume from 0.0 to 1.0 (e.g. '0.8'). Falls back to notify.voice_volume config. Note: macOS say does not support volume.",
 			},
 		},
 		"required": []any{"text"},
@@ -38,8 +47,23 @@ func TtsSpeak() func(context.Context, *pluginv1.ToolRequest) (*pluginv1.ToolResp
 
 		text := helpers.GetString(req.Arguments, "text")
 		voice := helpers.GetString(req.Arguments, "voice")
+		speed := helpers.GetString(req.Arguments, "speed")
+		volume := helpers.GetString(req.Arguments, "volume")
 
-		_, err := tts.Speak(ctx, text, voice)
+		// Fall back to stored preferences, then platform defaults.
+		if voice == "" {
+			voice = globaldb.GetConfig("notify.voice_name")
+		}
+		// If no voice set, use platform system default (Siri on macOS).
+		// Users can override via notify_config settings.
+		if speed == "" {
+			speed = globaldb.GetConfig("notify.voice_speed")
+		}
+		if volume == "" {
+			volume = globaldb.GetConfig("notify.voice_volume")
+		}
+
+		_, err := tts.Speak(ctx, text, voice, speed, volume)
 		if err != nil {
 			return helpers.ErrorResult("tts_error", fmt.Sprintf("TTS failed: %v", err)), nil
 		}
